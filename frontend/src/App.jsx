@@ -20,15 +20,12 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-navy-950">
+        <div className="min-h-screen" style={{ background: '#FFFFFF' }}>
           <Navbar />
           <Routes>
-            {/* Public */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/reset-password" element={<PasswordResetPage />} />
-
-            {/* Protected */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
             <Route path="/privacy" element={<ProtectedRoute><PrivacySettingsPage /></ProtectedRoute>} />
@@ -38,8 +35,6 @@ function App() {
             <Route path="/friends" element={<ProtectedRoute><FriendsPage /></ProtectedRoute>} />
             <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
             <Route path="/user/:username" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-
-            {/* Default redirect */}
             <Route path="/" element={<Navigate to="/feed" replace />} />
             <Route path="*" element={<Navigate to="/feed" replace />} />
           </Routes>

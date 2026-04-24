@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Shield, MessageSquareLock, Upload, Settings, Activity,
-  LogOut, Menu, X, User, Lock, Home, Users, Sparkles
+  LogOut, Menu, X, User, Home, Users, Sparkles
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -31,31 +31,33 @@ const Navbar = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <nav className="glass-strong sticky top-0 z-50 border-b border-navy-700/50">
+    <nav style={{ background: '#FFFFFF', borderBottom: '1px solid #E1E1E1' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <Link to="/feed" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 gradient-primary rounded-lg flex items-center justify-center
-                            group-hover:shadow-lg group-hover:shadow-electric/20 transition-all duration-300">
-              <Shield className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#24A47F' }}>
+              <Shield className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-bold gradient-text hidden sm:block">SPSM</span>
+            <span className="text-base font-bold hidden sm:block" style={{ color: '#15372C', fontFamily: "'Instrument Serif', Georgia, serif", fontSize: '20px' }}>
+              SPSM
+            </span>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-0">
             {navItems.map(({ path, label, icon: Icon }) => {
               const isActive = location.pathname === path;
               return (
-                <Link
-                  key={path}
-                  to={path}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                    ${isActive
-                      ? 'bg-electric/15 text-electric glow-sm'
-                      : 'text-navy-300 hover:text-navy-100 hover:bg-navy-700/50'
-                    }`}
+                <Link key={path} to={path}
+                  className="flex items-center gap-1.5 px-3 py-4 text-sm font-medium transition-colors"
+                  style={{
+                    color: isActive ? '#24A47F' : '#666666',
+                    borderBottom: isActive ? '2px solid #24A47F' : '2px solid transparent',
+                    marginBottom: '-1px',
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = '#15372C'; }}
+                  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = '#666666'; }}
                 >
                   <Icon className="w-4 h-4" />
                   {label}
@@ -64,35 +66,35 @@ const Navbar = () => {
             })}
           </div>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-3">
+          {/* Right side */}
+          <div className="flex items-center gap-1">
             <NotificationBell />
-            
-            <Link
-              to="/profile"
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg
-                         text-sm text-navy-300 hover:text-navy-100 hover:bg-navy-700/50 transition-all"
+
+            <Link to="/profile"
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: '#424242' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#F3F3F3'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <div className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
+              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: '#24A47F' }}>
+                <User className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="font-medium">{user?.username || 'User'}</span>
+              <span className="text-sm font-medium">{user?.username || 'User'}</span>
             </Link>
 
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm
-                         text-rose-400 hover:bg-rose-500/10 transition-all duration-200"
+            <button onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors"
+              style={{ color: '#D8372A' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#FFF7F8'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
+              <span className="hidden sm:inline font-medium">Logout</span>
             </button>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 rounded-lg text-navy-300 hover:text-navy-100 hover:bg-navy-700/50"
+            <button onClick={() => setMobileOpen(!mobileOpen)}
+              className="md:hidden p-2 rounded-lg" style={{ color: '#424242' }}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -102,20 +104,17 @@ const Navbar = () => {
 
       {/* Mobile Nav */}
       {mobileOpen && (
-        <div className="md:hidden glass border-t border-navy-700/50 animate-slide-up">
-          <div className="px-4 py-3 space-y-1">
+        <div className="md:hidden animate-slide-up" style={{ background: '#FFFFFF', borderTop: '1px solid #E1E1E1' }}>
+          <div className="px-4 py-2 space-y-0.5">
             {navItems.map(({ path, label, icon: Icon }) => {
               const isActive = location.pathname === path;
               return (
-                <Link
-                  key={path}
-                  to={path}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all
-                    ${isActive
-                      ? 'bg-electric/15 text-electric'
-                      : 'text-navy-300 hover:bg-navy-700/50'
-                    }`}
+                <Link key={path} to={path} onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
+                  style={{
+                    background: isActive ? '#ECFAF5' : 'transparent',
+                    color: isActive ? '#24A47F' : '#666666',
+                  }}
                 >
                   <Icon className="w-5 h-5" />
                   {label}

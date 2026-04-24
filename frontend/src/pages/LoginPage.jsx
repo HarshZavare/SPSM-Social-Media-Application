@@ -17,184 +17,123 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
+    e.preventDefault(); setError(''); setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
-      if (res.data.requiresOTP) {
-        setOtpStep(true);
-        setOtpEmail(email);
-      } else if (res.data.token) {
-        login(res.data.token, res.data.user);
-        navigate('/feed');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
+      if (res.data.requiresOTP) { setOtpStep(true); setOtpEmail(email); }
+      else if (res.data.token) { login(res.data.token, res.data.user); navigate('/feed'); }
+    } catch (err) { setError(err.response?.data?.message || 'Login failed'); } finally { setLoading(false); }
   };
 
   const handleOTPVerify = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
+    e.preventDefault(); setError(''); setLoading(true);
     try {
       const res = await api.post('/auth/verify-otp', { email: otpEmail, otp, type: 'LOGIN' });
-      if (res.data.token) {
-        login(res.data.token, res.data.user);
-        navigate('/feed');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'OTP verification failed');
-    } finally {
-      setLoading(false);
-    }
+      if (res.data.token) { login(res.data.token, res.data.user); navigate('/feed'); }
+    } catch (err) { setError(err.response?.data?.message || 'OTP verification failed'); } finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Background orbs */}
-      <div className="bg-orb bg-orb-1" />
-      <div className="bg-orb bg-orb-2" />
-
-      <div className="w-full max-w-md animate-slide-up">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-4 glow">
-            <Shield className="w-8 h-8 text-white" />
+    <div className="min-h-screen flex">
+      {/* Left panel — branding */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12" style={{ background: '#15372C' }}>
+        <div>
+          <div className="flex items-center gap-3 mb-16">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: '#24A47F' }}>
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-2xl text-white" style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}>SPSM</span>
           </div>
-          <h1 className="text-3xl font-bold gradient-text">SPSM</h1>
-          <p className="text-navy-400 text-sm mt-1">Secure Privacy-focused Social Media</p>
+          <h1 className="text-5xl text-white mb-6 leading-tight" style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}>
+            Secure your<br />digital social life.
+          </h1>
+          <p className="text-lg" style={{ color: '#4CB398' }}>
+            End-to-end encryption, two-factor authentication, and real-time threat monitoring — all in one platform.
+          </p>
         </div>
+        <div className="flex items-center gap-8">
+          {['AES-256-GCM', '2FA Auth', 'ClamAV Scan', 'Zero Trust'].map((f, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#24A47F' }} />
+              <span className="text-sm" style={{ color: '#4CB398' }}>{f}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {/* Card */}
-        <div className="glass rounded-2xl p-8">
-          <h2 className="text-xl font-semibold text-navy-50 mb-6">
-            {otpStep ? 'Verify OTP' : 'Welcome Back'}
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center p-8" style={{ background: '#FAFAFA' }}>
+        <div className="w-full max-w-md animate-fade-in">
+          <div className="lg:hidden flex items-center gap-2.5 mb-10">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: '#24A47F' }}>
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold" style={{ color: '#15372C', fontFamily: "'Instrument Serif', Georgia, serif" }}>SPSM</span>
+          </div>
+
+          <h2 className="text-3xl mb-2" style={{ color: '#15372C', fontFamily: "'Instrument Serif', Georgia, serif" }}>
+            {otpStep ? 'Verify your identity' : 'Welcome back'}
           </h2>
+          <p className="text-sm mb-8" style={{ color: '#666666' }}>
+            {otpStep ? 'Enter the verification code sent to your email' : 'Sign in to your secure account'}
+          </p>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm animate-fade-in">
-              {error}
-            </div>
+            <div className="mb-5 p-3 rounded-lg text-sm flex items-center gap-2 animate-fade-in"
+              style={{ background: '#FFF7F8', border: '1px solid #FFE5E3', color: '#D8372A' }}>{error}</div>
           )}
 
           {!otpStep ? (
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-navy-300 mb-1.5">Email</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: '#424242' }}>Email address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-500" />
-                  <input
-                    id="login-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-navy-800/80 border border-navy-600/50
-                             text-navy-100 placeholder-navy-500 text-sm
-                             focus:border-electric/50 transition-all"
-                    placeholder="you@example.com"
-                    required
-                  />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#C8C8C8' }} />
+                  <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    className="input-field pl-10" placeholder="you@example.com" required />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-navy-300 mb-1.5">Password</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: '#424242' }}>Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-500" />
-                  <input
-                    id="login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-12 py-2.5 rounded-xl bg-navy-800/80 border border-navy-600/50
-                             text-navy-100 placeholder-navy-500 text-sm
-                             focus:border-electric/50 transition-all"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-500 hover:text-navy-300"
-                  >
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#C8C8C8' }} />
+                  <input id="login-password" type={showPassword ? 'text' : 'password'} value={password}
+                    onChange={(e) => setPassword(e.target.value)} className="input-field pl-10 pr-10" placeholder="••••••••" required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#C8C8C8' }}>
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-navy-400">
-                  <input type="checkbox" className="rounded border-navy-600 bg-navy-800 text-electric" />
-                  Remember me
+                <label className="flex items-center gap-2 text-sm" style={{ color: '#666666' }}>
+                  <input type="checkbox" className="rounded" style={{ accentColor: '#24A47F' }} /> Remember me
                 </label>
-                <Link to="/reset-password" className="text-sm text-electric hover:text-electric-light transition">
-                  Forgot password?
-                </Link>
+                <Link to="/reset-password" className="text-sm font-medium" style={{ color: '#24A47F' }}>Forgot password?</Link>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 rounded-xl gradient-primary text-white font-semibold text-sm
-                         hover:shadow-lg hover:shadow-electric/25 disabled:opacity-50
-                         transition-all duration-300 flex items-center justify-center gap-2"
-              >
+              <button type="submit" disabled={loading} className="btn-green w-full py-2.5">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                {loading ? 'Authenticating...' : 'Sign In'}
+                {loading ? 'Signing in...' : 'Sign in'}
               </button>
             </form>
           ) : (
             <form onSubmit={handleOTPVerify} className="space-y-5">
-              <p className="text-sm text-navy-300">
-                A 6-digit verification code has been sent to <strong className="text-electric">{otpEmail}</strong>
-              </p>
+              <p className="text-sm" style={{ color: '#666666' }}>Code sent to <strong style={{ color: '#24A47F' }}>{otpEmail}</strong></p>
               <div>
-                <label className="block text-sm font-medium text-navy-300 mb-1.5">OTP Code</label>
-                <input
-                  id="otp-input"
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="w-full px-4 py-3 rounded-xl bg-navy-800/80 border border-navy-600/50
-                           text-navy-100 text-center text-2xl tracking-[0.5em] font-mono
-                           focus:border-electric/50 transition-all"
-                  placeholder="000000"
-                  maxLength={6}
-                  required
-                />
+                <label className="block text-sm font-medium mb-1.5" style={{ color: '#424242' }}>Verification code</label>
+                <input id="otp-input" type="text" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="input-field text-center text-2xl tracking-[0.5em] font-mono" placeholder="000000" maxLength={6} required />
               </div>
-              <button
-                type="submit"
-                disabled={loading || otp.length !== 6}
-                className="w-full py-2.5 rounded-xl gradient-primary text-white font-semibold text-sm
-                         hover:shadow-lg hover:shadow-electric/25 disabled:opacity-50
-                         transition-all duration-300 flex items-center justify-center gap-2"
-              >
+              <button type="submit" disabled={loading || otp.length !== 6} className="btn-green w-full py-2.5">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-                {loading ? 'Verifying...' : 'Verify & Login'}
+                {loading ? 'Verifying...' : 'Verify & Sign in'}
               </button>
-              <button
-                type="button"
-                onClick={() => { setOtpStep(false); setOtp(''); }}
-                className="w-full text-sm text-navy-400 hover:text-navy-200 transition"
-              >
-                ← Back to login
-              </button>
+              <button type="button" onClick={() => { setOtpStep(false); setOtp(''); }} className="w-full text-sm font-medium" style={{ color: '#666666' }}>← Back to login</button>
             </form>
           )}
 
-          <div className="mt-6 pt-6 border-t border-navy-700/50 text-center">
-            <p className="text-sm text-navy-400">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-electric hover:text-electric-light font-medium transition">
-                Create one
-              </Link>
+          <div className="mt-8 pt-6 text-center" style={{ borderTop: '1px solid #E1E1E1' }}>
+            <p className="text-sm" style={{ color: '#666666' }}>
+              Don't have an account? <Link to="/register" className="font-semibold" style={{ color: '#24A47F' }}>Create one</Link>
             </p>
           </div>
         </div>

@@ -1,479 +1,96 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
-import {
-  Upload, File, Image, FileText, Trash2, Download, Share2,
-  Lock, Shield, Check, AlertTriangle, Loader2, X
-} from 'lucide-react';
+import { Upload, File, Image, FileText, Download, Share2, Lock, Shield, Check, AlertTriangle, Loader2, X } from 'lucide-react';
 
 const FileUploadPage = () => {
-  const [files, setFiles] = useState([]);
-  const [sharedFiles, setSharedFiles] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [keys, setKeys] = useState(null);
-  const [activeTab, setActiveTab] = useState('files');
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [fileToShare, setFileToShare] = useState(null);
-  const [selectedUser, setSelectedUser] = useState('');
-  const [dragActive, setDragActive] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [files,setFiles]=useState([]);const [sharedFiles,setSharedFiles]=useState([]);const [users,setUsers]=useState([]);const [keys,setKeys]=useState(null);
+  const [activeTab,setActiveTab]=useState('files');const [shareModalOpen,setShareModalOpen]=useState(false);const [fileToShare,setFileToShare]=useState(null);
+  const [selectedUser,setSelectedUser]=useState('');const [dragActive,setDragActive]=useState(false);const [uploading,setUploading]=useState(false);
+  const [uploadProgress,setUploadProgress]=useState(0);const [error,setError]=useState('');const [success,setSuccess]=useState('');const [loading,setLoading]=useState(true);
 
-  useEffect(() => {
-    fetchFiles();
-    fetchKeys();
-  }, []);
+  useEffect(()=>{fetchFiles();fetchKeys();},[]);
+  const fetchKeys=async()=>{try{const r=await api.get('/auth/keys');setKeys({public:r.data.publicKey,private:r.data.privateKey});}catch(e){}};
+  const fetchFiles=async()=>{try{const r=await api.get('/files/list');setFiles(r.data.files||[]);}catch(e){}finally{setLoading(false);}};
+  const fetchSharedFiles=async()=>{try{const r=await api.get('/files/shared');setSharedFiles(r.data.files||[]);}catch(e){}};
+  const fetchUsers=async()=>{try{const r=await api.get('/files/users');setUsers(r.data.users||[]);}catch(e){}};
+  useEffect(()=>{if(activeTab==='shared')fetchSharedFiles();},[activeTab]);
+  useEffect(()=>{if(shareModalOpen&&users.length===0)fetchUsers();},[shareModalOpen]);
 
-  const fetchKeys = async () => {
-    try {
-      const res = await api.get('/auth/keys');
-      setKeys({ public: res.data.publicKey, private: res.data.privateKey });
-    } catch (err) {
-      console.error('Fetch keys error:', err);
-    }
-  };
+  const handleShare=async()=>{if(!selectedUser||!fileToShare)return;try{await api.post('/files/share',{fileId:fileToShare.id,shareWithUserId:selectedUser});setSuccess(`File shared successfully!`);setShareModalOpen(false);setFileToShare(null);setSelectedUser('');setTimeout(()=>setSuccess(''),4000);}catch(e){setError(e.response?.data?.message||'Failed');}};
+  const handleDrag=useCallback((e)=>{e.preventDefault();e.stopPropagation();if(e.type==='dragenter'||e.type==='dragover')setDragActive(true);else if(e.type==='dragleave')setDragActive(false);},[]);
+  const uploadFile=async(file)=>{setError('');setSuccess('');setUploading(true);setUploadProgress(0);const fd=new FormData();fd.append('file',file);try{await api.post('/files/upload',fd,{headers:{'Content-Type':'multipart/form-data'},onUploadProgress:(p)=>{setUploadProgress(Math.round((p.loaded*100)/p.total));}});setSuccess(`${file.name} uploaded & encrypted`);fetchFiles();setTimeout(()=>setSuccess(''),4000);}catch(e){setError(e.response?.data?.message||'Upload failed');}finally{setUploading(false);setUploadProgress(0);}};
+  const handleDrop=useCallback((e)=>{e.preventDefault();e.stopPropagation();setDragActive(false);if(e.dataTransfer.files&&e.dataTransfer.files[0])uploadFile(e.dataTransfer.files[0]);},[]);
+  const handleFileSelect=(e)=>{if(e.target.files&&e.target.files[0])uploadFile(e.target.files[0]);};
+  const downloadFile=async(id,name)=>{try{const r=await api.get(`/files/download/${id}`,{responseType:'blob'});const u=window.URL.createObjectURL(new Blob([r.data]));const a=document.createElement('a');a.href=u;a.download=name;a.click();window.URL.revokeObjectURL(u);}catch(e){setError('Download failed');}};
+  const getFileIcon=(m)=>m?.startsWith('image/')?<Image className="w-5 h-5" style={{color:'#3574D6'}}/>:<FileText className="w-5 h-5" style={{color:'#FE7838'}}/>;
+  const formatSize=(b)=>b<1024?`${b} B`:b<1048576?`${(b/1024).toFixed(1)} KB`:`${(b/1048576).toFixed(1)} MB`;
 
-  const fetchFiles = async () => {
-    try {
-      const res = await api.get('/files/list');
-      setFiles(res.data.files || []);
-    } catch (err) {
-      console.error('Fetch files error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSharedFiles = async () => {
-    try {
-      const res = await api.get('/files/shared');
-      setSharedFiles(res.data.files || []);
-    } catch (err) {
-      console.error('Fetch shared error:', err);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const res = await api.get('/files/users');
-      setUsers(res.data.users || []);
-    } catch (err) {
-      console.error('Fetch users error:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'shared') fetchSharedFiles();
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (shareModalOpen && users.length === 0) fetchUsers();
-  }, [shareModalOpen]);
-
-  const handleShare = async () => {
-    if (!selectedUser || !fileToShare) return;
-    try {
-      await api.post('/files/share', { fileId: fileToShare.id, shareWithUserId: selectedUser });
-      setSuccess(`File ${fileToShare.original_name} shared successfully!`);
-      setShareModalOpen(false);
-      setFileToShare(null);
-      setSelectedUser('');
-      setTimeout(() => setSuccess(''), 4000);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to share file');
-    }
-  };
-
-  const handleDrag = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  }, []);
-
-  const uploadFile = async (file) => {
-    setError('');
-    setSuccess('');
-    setUploading(true);
-    setUploadProgress(0);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      await api.post('/files/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(pct);
-        },
-      });
-      setSuccess(`${file.name} uploaded and encrypted successfully!`);
-      fetchFiles();
-      setTimeout(() => setSuccess(''), 4000);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Upload failed');
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      uploadFile(e.dataTransfer.files[0]);
-    }
-  }, []);
-
-  const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      uploadFile(e.target.files[0]);
-    }
-  };
-
-  const downloadFile = async (fileId, fileName) => {
-    try {
-      const res = await api.get(`/files/download/${fileId}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      setError('Download failed');
-    }
-  };
-
-  const getFileIcon = (mime) => {
-    if (mime?.startsWith('image/')) return <Image className="w-5 h-5 text-electric" />;
-    return <FileText className="w-5 h-5 text-amber-400" />;
-  };
-
-  const formatSize = (bytes) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  const renderFileList = (fileList, isShared=false) => fileList.length>0?(
+    <div className="space-y-2">{fileList.map(file=>(
+      <div key={file.id} className="flex items-center gap-4 p-4 rounded-lg" style={{background:'#FAFAFA',border:'1px solid #F3F3F3'}}>
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:'#FFF',border:'1px solid #E1E1E1'}}>{getFileIcon(file.mime_type)}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start mb-1.5">
+            <div><h3 className="font-semibold text-sm truncate" style={{color:'#222'}}>{file.original_name}</h3><p className="text-xs" style={{color:'#999'}}>{formatSize(file.file_size)} · {new Date(file.uploaded_at).toLocaleDateString()}{isShared&&file.owner_username?` · From: ${file.owner_username}`:''}</p></div>
+            <div className="flex gap-1">{!isShared&&<button onClick={()=>{setFileToShare(file);setShareModalOpen(true);}} className="p-2 rounded-lg transition-colors" style={{color:'#666'}} title="Share"><Share2 className="w-4 h-4"/></button>}
+              <button onClick={()=>downloadFile(file.id,file.original_name)} className="p-2 rounded-lg transition-colors" style={{color:'#666'}} title="Download"><Download className="w-4 h-4"/></button></div>
+          </div>
+          <div className="grid grid-cols-[80px_1fr] gap-y-1 text-xs" style={{color:'#666'}}>
+            <span className="font-medium" style={{color:'#24A47F'}}>Scanner:</span><span>ClamAV (Clean)</span>
+            <span className="font-medium" style={{color:'#222'}}>Encryption:</span><span>AES-256-GCM</span>
+            <span className="font-medium" style={{color:'#222'}}>Hash:</span><span className="font-mono truncate" style={{color:'#999'}}>{file.file_hash||'...'}</span>
+            <span className="font-medium" style={{color:'#222'}}>Auth Tag:</span><span className="font-mono truncate" style={{color:'#999'}}>{file.auth_tag||'...'}</span>
+          </div>
+        </div>
+      </div>
+    ))}</div>
+  ):(<div className="text-center py-12"><File className="w-12 h-12 mx-auto mb-3" style={{color:'#E1E1E1'}}/><p className="text-sm" style={{color:'#999'}}>{isShared?'No files shared with you yet':'No files uploaded yet'}</p></div>);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8 animate-fade-in">
-        <h1 className="text-2xl font-bold text-navy-50 flex items-center gap-2">
-          Your Files
-        </h1>
-        <p className="text-navy-400 text-sm mt-1">Encrypted with AES-256-GCM. Scanned for malware.</p>
+        <p className="text-sm font-medium mb-1" style={{color:'#24A47F'}}>Storage</p>
+        <h1 className="page-title">Secure Files</h1>
+        <p className="page-subtitle">Encrypted with AES-256-GCM · Scanned for malware</p>
+      </div>
+      {error&&<div className="mb-5 p-3 rounded-lg text-sm flex items-center gap-2 animate-fade-in" style={{background:'#FFF7F8',border:'1px solid #FFE5E3',color:'#D8372A'}}><AlertTriangle className="w-4 h-4 flex-shrink-0"/>{error}<button onClick={()=>setError('')} className="ml-auto"><X className="w-4 h-4"/></button></div>}
+      {success&&<div className="mb-5 p-3 rounded-lg flex items-center gap-2 animate-fade-in" style={{background:'#ECFAF5',border:'1px solid #C9F0E6',color:'#047957'}}><Check className="w-4 h-4 flex-shrink-0"/><span className="text-sm font-medium">{success}</span></div>}
+
+      <div className="tab-group mb-8">
+        {['files','shared','keys'].map(tab=>(<button key={tab} onClick={()=>setActiveTab(tab)} className={`tab-item ${activeTab===tab?'active':''}`}>{tab==='files'?'My Files':tab==='shared'?'Shared With Me':'Security Keys'}</button>))}
       </div>
 
-      {/* Status Messages */}
-      {error && (
-        <div className="mb-6 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-center gap-2 animate-fade-in">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {error}
-          <button onClick={() => setError('')} className="ml-auto"><X className="w-4 h-4" /></button>
-        </div>
-      )}
-      {success && (
-        <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-3 animate-fade-in">
-          <Check className="w-5 h-5 flex-shrink-0" />
-          <span className="text-base">File securely uploaded. Hash: {success.substring(success.indexOf('Hash: ') + 6) || '...'}</span>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-3 mb-8">
-        <button
-          onClick={() => setActiveTab('files')}
-          className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${
-            activeTab === 'files'
-              ? 'bg-electric text-white shadow-lg shadow-electric/25'
-              : 'border border-navy-700 text-navy-100 hover:bg-navy-800'
-          }`}
-        >
-          My Files
-        </button>
-        <button
-          onClick={() => setActiveTab('shared')}
-          className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${
-            activeTab === 'shared'
-              ? 'bg-electric text-white shadow-lg shadow-electric/25'
-              : 'border border-navy-700 text-navy-100 hover:bg-navy-800'
-          }`}
-        >
-          Shared With Me
-        </button>
-        <button
-          onClick={() => setActiveTab('keys')}
-          className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all ${
-            activeTab === 'keys'
-              ? 'bg-electric text-white shadow-lg shadow-electric/25'
-              : 'border border-navy-700 text-navy-100 hover:bg-navy-800'
-          }`}
-        >
-          My Security Keys
-        </button>
-      </div>
-
-      {activeTab === 'files' && (
+      {activeTab==='files'&&(
         <>
-          {/* Upload Zone */}
-      <div
-        className={`glass rounded-2xl p-8 mb-8 border-2 border-dashed transition-all duration-300 cursor-pointer
-          ${dragActive ? 'border-electric bg-electric/5 scale-[1.01]' : 'border-navy-600/50 hover:border-navy-500'}
-          ${uploading ? 'pointer-events-none' : ''}`}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => !uploading && document.getElementById('file-input').click()}
-      >
-        <input
-          id="file-input"
-          type="file"
-          onChange={handleFileSelect}
-          className="hidden"
-          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx"
-        />
-
-        <div className="text-center">
-          {uploading ? (
-            <div className="animate-fade-in">
-              <Lock className="w-12 h-12 text-electric mx-auto mb-4 animate-pulse" />
-              <p className="text-sm font-medium text-navy-200 mb-3">Encrypting & uploading...</p>
-              <div className="w-64 mx-auto bg-navy-700 rounded-full h-2">
-                <div
-                  className="gradient-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-              <p className="text-xs text-navy-500 mt-2">{uploadProgress}%</p>
+          <div className={`card p-8 mb-8 border-2 border-dashed cursor-pointer transition-all ${uploading?'pointer-events-none':''}`}
+            style={{borderColor:dragActive?'#24A47F':'#E1E1E1',background:dragActive?'#ECFAF5':'#FFF'}}
+            onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+            onClick={()=>!uploading&&document.getElementById('file-input').click()}>
+            <input id="file-input" type="file" onChange={handleFileSelect} className="hidden" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx"/>
+            <div className="text-center">
+              {uploading?(<div className="animate-fade-in"><Lock className="w-12 h-12 mx-auto mb-4 animate-pulse" style={{color:'#24A47F'}}/><p className="text-sm font-medium mb-3" style={{color:'#222'}}>Encrypting & uploading...</p><div className="w-64 mx-auto rounded-full h-1.5" style={{background:'#E1E1E1'}}><div className="h-1.5 rounded-full transition-all" style={{background:'#24A47F',width:`${uploadProgress}%`}}/></div><p className="text-xs mt-2" style={{color:'#999'}}>{uploadProgress}%</p></div>):(
+                <><Upload className="w-12 h-12 mx-auto mb-4" style={{color:dragActive?'#24A47F':'#C8C8C8'}}/><p className="text-sm font-medium" style={{color:'#424242'}}>{dragActive?'Drop your file here':'Drag & drop or click to upload'}</p><p className="text-xs mt-2" style={{color:'#999'}}>Images & documents · Max 10MB</p></>
+              )}
             </div>
-          ) : (
-            <>
-              <Upload className={`w-12 h-12 mx-auto mb-4 ${dragActive ? 'text-electric' : 'text-navy-500'}`} />
-              <p className="text-sm font-medium text-navy-200">
-                {dragActive ? 'Drop your file here' : 'Drag & drop or click to upload'}
-              </p>
-              <p className="text-xs text-navy-500 mt-2">
-                Images (JPG, PNG, GIF, WebP) and Documents (PDF, DOC) • Max 10MB
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Files List */}
-      <div className="glass rounded-2xl p-6 lg:p-8 mt-8">
-        <h2 className="text-lg font-semibold text-electric mb-6">
-          My Secure Files
-        </h2>
-
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-14 bg-navy-800/50 rounded-lg animate-pulse" />)}
           </div>
-        ) : files.length > 0 ? (
-          <div className="space-y-2">
-            {files.map((file) => (
-              <div
-                key={file.id}
-                className="flex items-center gap-4 p-4 rounded-xl bg-navy-800/30 border border-navy-700/30
-                         hover:border-navy-600/50 transition-all group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-navy-800/80 flex items-center justify-center flex-shrink-0">
-                  {getFileIcon(file.mime_type)}
-                </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="text-navy-50 font-semibold mb-1 truncate">{file.original_name}</h3>
-                      <p className="text-xs text-navy-400">
-                        {formatSize(file.file_size)} - {new Date(file.uploaded_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => {
-                          setFileToShare(file);
-                          setShareModalOpen(true);
-                        }}
-                        className="p-2 ... hover:text-navy-50"
-                        title="Share File"
-                      >
-                        <Share2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => downloadFile(file.id, file.original_name)}
-                        className="p-2 ... hover:text-navy-50"
-                        title="Download & Decrypt"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-[80px_1fr] mt-3 gap-y-1.5 text-xs text-navy-300">
-                    <span className="font-semibold text-electric">Scanner:</span>
-                    <span>ClamAV (Clean - No Malware Detected)</span>
-                    
-                    <span className="font-semibold text-navy-100">Encryption:</span>
-                    <span>AES-256-GCM (Authenticated Encryption)</span>
-                    
-                    <span className="font-semibold text-navy-100">File Hash:</span>
-                    <span className="font-mono text-navy-400 truncate">{file.file_hash || '...'}</span>
-                    
-                    <span className="font-semibold text-navy-100">Auth Tag:</span>
-                    <span className="font-mono text-navy-400 truncate">{file.auth_tag || '...'}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <File className="w-12 h-12 text-navy-700 mx-auto mb-3" />
-            <p className="text-sm text-navy-500">No files uploaded yet</p>
-            <p className="text-xs text-navy-600">Your files will be encrypted before storage</p>
-          </div>
-        )}
-      </div>
-          </>
+          {renderFileList(files)}
+        </>
       )}
-
-      {activeTab === 'shared' && (
-        <div className="glass rounded-2xl p-6 lg:p-8 mt-8 animate-fade-in shadow-xl border border-navy-700/50">
-          <h2 className="text-lg font-semibold mb-6 text-electric">Files Shared With Me</h2>
-          
-          {sharedFiles.length > 0 ? (
-            <div className="space-y-4">
-              {sharedFiles.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center gap-4 p-5 rounded-xl bg-navy-800/40 border border-navy-700/50 hover:border-navy-600 transition-all"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-navy-700/50 flex items-center justify-center flex-shrink-0">
-                    {getFileIcon(file.mime_type)}
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="text-navy-50 font-semibold mb-1 truncate">{file.original_name}</h3>
-                        <p className="text-xs text-navy-400">
-                          {formatSize(file.file_size)} • {new Date(file.uploaded_at).toLocaleDateString()} • From: {file.owner_email || file.owner_username}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => downloadFile(file.id, file.original_name)}
-                        className="p-2 ... hover:text-navy-50"
-                        title="Download & Decrypt"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-[80px_1fr] mt-3 gap-y-1.5 text-xs text-navy-300">
-                      <span className="font-semibold text-electric">Scanner:</span>
-                      <span>ClamAV (Clean - No Malware Detected)</span>
-                      
-                      <span className="font-semibold text-navy-100">Encryption:</span>
-                      <span>AES-256-GCM (Authenticated Encryption)</span>
-                      
-                      <span className="font-semibold text-navy-100">File Hash:</span>
-                      <span className="font-mono text-navy-400 truncate">{file.file_hash || '...'}</span>
-                      
-                      <span className="font-semibold text-navy-100">Auth Tag:</span>
-                      <span className="font-mono text-navy-400 truncate">{file.auth_tag || '...'}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Share2 className="w-12 h-12 text-navy-700 mx-auto mb-3 opacity-50" />
-              <p className="text-sm text-navy-400">No files have been shared with you yet.</p>
-            </div>
-          )}
+      {activeTab==='shared'&&<div className="animate-fade-in">{renderFileList(sharedFiles,true)}</div>}
+      {activeTab==='keys'&&(
+        <div className="animate-fade-in space-y-6">
+          <div><h3 className="text-sm font-semibold mb-2" style={{color:'#222'}}>Public Key</h3><div className="rounded-lg p-4 font-mono text-xs break-all leading-relaxed" style={{background:'#FAFAFA',border:'1px solid #E1E1E1',color:'#24A47F'}}>{keys?.public||'Loading...'}</div></div>
+          <div><h3 className="text-sm font-semibold mb-2" style={{color:'#222'}}>Private Key</h3><div className="rounded-lg p-4 font-mono text-xs break-all leading-relaxed" style={{background:'#FAFAFA',border:'1px solid #E1E1E1',color:'#666'}}>{keys?.private||'Loading...'}</div></div>
         </div>
       )}
 
-      {activeTab === 'keys' && (
-        <div className="glass rounded-2xl p-6 lg:p-8 animate-fade-in shadow-xl border border-navy-700/50">
-          <h2 className="text-xl font-semibold mb-2 text-electric">RSA Asymmetric Keys</h2>
-          <p className="text-navy-300 text-sm mb-8 leading-relaxed">
-            These keys were uniquely generated for your account upon registration. They can be used for end-to-end asynchronous verification.
-          </p>
-
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-semibold text-navy-50 mb-3">Public Key</h3>
-              <div className="bg-navy-900/60 rounded-xl p-5 border border-navy-700/50 font-mono text-xs text-electric break-all whitespace-pre-wrap leading-relaxed shadow-inner">
-                {keys?.public || 'Generating...'}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-navy-50 mb-3">Private Key</h3>
-              <div className="bg-navy-900/60 rounded-xl p-5 border border-navy-700/50 font-mono text-xs text-navy-400 break-all whitespace-pre-wrap leading-relaxed shadow-inner">
-                {keys?.private || 'Generating...'}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Share Modal */}
-      {shareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-900/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-navy-50">Share File</h3>
-              <button onClick={() => setShareModalOpen(false)} className="text-navy-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <p className="text-sm text-navy-300 mb-4 truncate">
-              Sharing: <span className="font-medium text-electric">{fileToShare?.original_name}</span>
-            </p>
-
-            <div className="mb-6">
-              <label className="block text-xs font-medium text-navy-400 mb-2">Select User</label>
-              <select
-                value={selectedUser}
-                onChange={(e) => setSelectedUser(e.target.value)}
-                className="w-full bg-navy-900 border border-navy-700 rounded-xl px-4 py-3 text-sm text-navy-100 focus:border-electric focus:ring-1 focus:ring-electric transition-all"
-              >
-                <option value="">-- Choose a user --</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.username} ({u.display_name})</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-3 justify-end">
-              <button 
-                onClick={() => setShareModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium text-navy-300 hover:bg-navy-700 transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleShare}
-                disabled={!selectedUser}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium bg-electric text-white hover:bg-electric/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                Share
-              </button>
-            </div>
+      {shareModalOpen&&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 animate-fade-in">
+          <div className="card-elevated p-6 w-full max-w-md mx-4 animate-scale-in">
+            <div className="flex justify-between items-center mb-5"><h3 className="text-lg font-semibold" style={{color:'#222'}}>Share File</h3><button onClick={()=>setShareModalOpen(false)} style={{color:'#999'}}><X className="w-5 h-5"/></button></div>
+            <p className="text-sm mb-4" style={{color:'#666'}}>Sharing: <span className="font-semibold" style={{color:'#24A47F'}}>{fileToShare?.original_name}</span></p>
+            <div className="mb-6"><label className="text-xs font-medium mb-2 block" style={{color:'#666'}}>Select user</label><select value={selectedUser} onChange={(e)=>setSelectedUser(e.target.value)} className="input-field"><option value="">-- Choose --</option>{users.map(u=>(<option key={u.id} value={u.id}>{u.username} ({u.display_name})</option>))}</select></div>
+            <div className="flex gap-3 justify-end"><button onClick={()=>setShareModalOpen(false)} className="btn-outline">Cancel</button><button onClick={handleShare} disabled={!selectedUser} className="btn-green">Share</button></div>
           </div>
         </div>
       )}
